@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
     Route::post('recharge', [RechargeController::class, 'store'])->name('user.recharge');
+    Route::post('payment/verify', [RechargeController::class, 'verifyPayment'])->name('payment.verify');
 });
 
 require __DIR__.'/auth.php';

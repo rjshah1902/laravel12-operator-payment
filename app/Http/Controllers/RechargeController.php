@@ -7,9 +7,18 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
 use App\Models\Recharge;
 use App\Models\ApiLog;
+use App\Services\RazorpayService;
 
 class RechargeController extends Controller
 {
+    
+    protected $razorpay;
+
+    public function __construct(RazorpayService $razorpay)
+    {
+        $this->razorpay = $razorpay;
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -29,9 +38,25 @@ class RechargeController extends Controller
             'recharge_amount' => $request->recharge_amount,
         ]);
 
-        $this->saveApiCall($recharge);
+        /* $this->saveApiCall($recharge); */
 
-        return redirect()->back()->with('success', 'Recharge Created Successfully');
+        return $this->createOrder($recharge);
+        /* return redirect()->back()->with('success', 'Recharge Created Successfully'); */
+    }
+
+    public function createOrder(Recharge $recharge)
+    {
+        
+        $orderId = 'order_'.$recharge->id;
+
+        $order = $this->razorpay->createOrder($recharge->recharge_amount * 100, $orderId);
+
+        return view('payment.checkout', [
+            'recharge' => $recharge,
+            'order_id' => $order['id'],
+            'amount'   => $recharge->recharge_amount * 100,
+            'key'      => env('RAZORPAY_KEY'),
+        ]);
     }
 
     public function saveApiCall($recharge){
@@ -59,4 +84,32 @@ class RechargeController extends Controller
             'response_body'   => $response->body(),
         ]);
     }
+
+    public function verifyPayment(Request $request)
+    {
+        try {
+            $attributes = [
+                'razorpay_order_id'   => $request->razorpay_order_id,
+                'razorpay_payment_id' => $request->razorpay_payment_id,
+                'razorpay_signature'  => $request->razorpay_signature,
+            ];
+
+            $this->razorpay->verifySignature($attributes);
+
+            $recharge = Recharge::findOrFail($request->recharge_id);
+            $recharge->update(['payment_status' => 'paid']);
+
+            $this->saveApiCall($recharge);
+
+            return response()->json(['success' => true, 'message' => 'Payment successful & recharge initiated.']);
+
+        } catch (\Exception $e) {
+
+            $recharge = Recharge::findOrFail($request->recharge_id);
+            $recharge->update(['payment_status' => 'failed']);
+            return response()->json(['success' => false, 'message' => 'Payment failed.']);
+        
+        }
+    }
+
 }
