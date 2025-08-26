@@ -14,6 +14,7 @@ class ApiLog extends Model
 
     protected $fillable = [
         'user_id',
+        'recharge_id',
         'api_for',
         'request_body',
         'response_body',
@@ -23,5 +24,10 @@ class ApiLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function recharge()
+    {
+        return $this->belongsTo(Recharge::class, 'recharge_id');
     }
 }

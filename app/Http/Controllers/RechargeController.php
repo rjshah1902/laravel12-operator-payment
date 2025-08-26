@@ -79,6 +79,7 @@ class RechargeController extends Controller
 
         ApiLog::create([
             'user_id'         => auth()->id(),
+            'recharge_id'         => $recharge->id,
             'api_for'         => "operator-recharge",
             'request_body'    => json_encode($apiBody),
             'response_body'   => $response->body(),
